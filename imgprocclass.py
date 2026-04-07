@@ -176,4 +176,31 @@ else:
 
 #nextneww2
 
+import tensorflow as tf
+from tensorflow.keras import layers, models
+
+# Load data
+data = tf.keras.preprocessing.image_dataset_from_directory(
+    "C:/Users/EC1003/Downloads/ds/xray_dataset_covid19/train",
+    image_size=(128, 128),
+    batch_size=32
+)
+
+# Normalize
+data = data.map(lambda x, y: (x / 255.0, y))
+
+# Model
+model = models.Sequential([
+    layers.Conv2D(32, 3, activation='relu', input_shape=(128, 128, 3)),
+    layers.MaxPooling2D(),
+    layers.Flatten(),
+    layers.Dense(128, activation='relu'),
+    layers.Dense(1, activation='sigmoid')
+])
+
+# Train
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+model.fit(data, epochs=5)
+model.save("model.h5")
+
 
