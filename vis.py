@@ -94,3 +94,54 @@ sns.heatmap(df[available].corr(), annot=True, cmap='coolwarm')
 plt.title("Correlation Heatmap")
 plt.tight_layout()
 plt.show()
+
+#nextnew2
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+
+df = pd.read_csv("your_file.csv")
+df = df.dropna()
+
+numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
+categoric_cols = df.select_dtypes(include='object').columns.tolist()
+
+print("Numeric columns:", numeric_cols)
+print("Categorical columns:", categoric_cols)
+
+# Histogram for every numeric column
+for col in numeric_cols:
+    plt.figure()
+    plt.hist(df[col], bins=20, edgecolor='black')
+    plt.title(f"Distribution of {col}")
+    plt.xlabel(col)
+    plt.ylabel("Frequency")
+    plt.tight_layout()
+    plt.show()
+
+# Countplot for every categorical column
+for col in categoric_cols:
+    plt.figure()
+    order = df[col].value_counts().index[:10]
+    sns.countplot(y=df[col], order=order)
+    plt.title(f"Top values in {col}")
+    plt.tight_layout()
+    plt.show()
+
+# Scatter for first 2 numeric columns if available
+if len(numeric_cols) >= 2:
+    plt.figure()
+    sns.scatterplot(x=df[numeric_cols[0]], y=df[numeric_cols[1]])
+    plt.title(f"{numeric_cols[0]} vs {numeric_cols[1]}")
+    plt.tight_layout()
+    plt.show()
+
+# Heatmap only if enough numeric columns
+if len(numeric_cols) >= 2:
+    plt.figure()
+    sns.heatmap(df[numeric_cols].corr(), annot=True, cmap='coolwarm')
+    plt.title("Correlation Heatmap")
+    plt.tight_layout()
+    plt.show()
