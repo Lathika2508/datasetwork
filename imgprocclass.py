@@ -1,73 +1,91 @@
 import os
 import cv2
 import numpy as np
-import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from tensorflow.keras import models, layers
 
-# 1. Load dataset
 data = []
 labels = []
+data_path = "dataset"
 
-path = "dataset/"   # folder containing class folders
+for category in sorted(os.listdir(data_path)):  # fix 3: sorted
+    category_path = os.path.join(data_path, category)
+    if not os.path.isdir(category_path):
+        continue
+    for img_name in os.listdir(category_path):
+        img_path = os.path.join(category_path, img_name)
+        try:
+            img = cv2.imread(img_path)
+            if img is None:
+                continue
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            img = cv2.resize(img, (128, 128))
+            data.append(img)
+            labels.append(category)
+        except Exception as e:  # fix 6: don't swallow errors silently
+            print(f"Skipping {img_path}: {e}")
 
-for folder in os.listdir(path):
-    folder_path = os.path.join(path, folder)
-    
-    for file in os.listdir(folder_path):
-        img_path = os.path.join(folder_path, file)
-        img = cv2.imread(img_path)
+# fix 4: guard against empty dataset
+if len(data) == 0:
+    raise ValueError("No images loaded. Check your dataset path and folder structure.")
 
-        # Preprocessing
-        img = cv2.resize(img, (50, 50))
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-        data.append(img.flatten())
-        labels.append(folder)
-
-# Convert to numpy
-X = np.array(data)
+X = np.array(data, dtype=np.float32) / 255.0
 y = np.array(labels)
 
-# 2. Encode labels
-from sklearn.preprocessing import LabelEncoder
 le = LabelEncoder()
-y = le.fit_transform(y)
+y_encoded = le.fit_transform(y)
 
-# 3. Train-Test Split
-from sklearn.model_selection import train_test_split
+num_classes = len(le.classes_)  # fix 1: cleaner
+print("Number of classes:", num_classes)
+print("Classes:", le.classes_)
+
+if num_classes < 2:
+    raise ValueError("Need at least 2 classes to train a classifier.")  # fix 5
+
+# fix 7: stratified split for balanced classes
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
+    X, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded
 )
 
-# 4. Train model (KNN)
-from sklearn.neighbors import KNeighborsClassifier
-model = KNeighborsClassifier()
-model.fit(X_train, y_train)
+model = models.Sequential([
+    layers.Conv2D(32, (3, 3), activation='relu', input_shape=(128, 128, 3)),
+    layers.MaxPooling2D(2, 2),
+    layers.Conv2D(64, (3, 3), activation='relu'),
+    layers.MaxPooling2D(2, 2),
+    layers.Flatten(),
+    layers.Dense(64, activation='relu'),
+])
 
-# 5. Evaluate
-from sklearn.metrics import accuracy_score
-y_pred = model.predict(X_test)
-print("Accuracy:", accuracy_score(y_test, y_pred))
+if num_classes == 2:
+    model.add(layers.Dense(1, activation='sigmoid'))
+    loss_fn = 'binary_crossentropy'
+else:
+    model.add(layers.Dense(num_classes, activation='softmax'))
+    loss_fn = 'sparse_categorical_crossentropy'
 
+model.compile(optimizer='adam', loss=loss_fn, metrics=['accuracy'])
+model.fit(X_train, y_train, epochs=5, validation_data=(X_test, y_test))
 
-# 🔥 6. PREDICTION ON NEW IMAGE
-
-# Load new image
-new_img = cv2.imread("test.jpg")
-
-# Same preprocessing (VERY IMPORTANT)
-new_img = cv2.resize(new_img, (50, 50))
-new_img = cv2.cvtColor(new_img, cv2.COLOR_BGR2GRAY)
-
-# Flatten
-new_img = new_img.flatten().reshape(1, -1)
+loss, acc = model.evaluate(X_test, y_test)
+print("Test Accuracy:", acc)
 
 # Predict
-pred = model.predict(new_img)
+img = cv2.imread("test.jpg")
+if img is None:
+    print("Test image not found!")
+else:
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    img = cv2.resize(img, (128, 128))
+    img = np.expand_dims(img.astype(np.float32) / 255.0, axis=0)
+    prediction = model.predict(img)
 
-# Convert back to label
-pred_label = le.inverse_transform(pred)
+    if num_classes == 2:
+        pred_index = int(prediction[0][0] > 0.5)  # fix 2: unambiguous
+    else:
+        pred_index = int(np.argmax(prediction))
 
-print("Predicted Class:", pred_label[0])
+    print("Predicted Class:", le.inverse_transform([pred_index])[0])
 
 
 #nexttneww
