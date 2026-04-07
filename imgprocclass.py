@@ -172,3 +172,8 @@ if prediction[0][0] > 0.5:
     print("Dog 🐶")
 else:
     print("Cat 🐱")
+
+
+#nextneww2
+
+
