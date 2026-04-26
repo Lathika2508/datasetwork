@@ -49,3 +49,43 @@ df_final.columns = list(df.columns)
 df_final.to_csv("preprocessed_data.csv", index=False)
 
 print("Preprocessing completed successfully!")
+
+
+
+#NEXTNEWW
+
+import pandas as pd
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from imblearn.over_sampling import SMOTE
+
+
+df=pd.read_csv("covid.csv")
+
+#clean
+
+df = df.drop_duplicates()
+
+#filling
+
+df = df.fillna(df.mean(numeric_only=True))
+df = df.ffill()
+
+le = LabelEncoder()
+for col in df.select_dtypes(include='object').columns:
+    df[col] = le.fit_transform(df[col].astype(str))
+
+X=df.iloc[:,:-1]
+Y=df.iloc[:,-1]
+
+scaler= StandardScaler()
+X_scaled=scaler.fit_transform(X).astype('float32')
+
+sm=SMOTE()
+X_res,Y_res=sm.fit_resample(X_scaled,Y)
+
+df_fin=pd.concat([pd.DataFrame(X_res),pd.DataFrame(Y_res)],axis=1)
+
+df_fin.columns=list(df.columns)
+
+df_fin.to_csv("preprocessed.csv")
+print("Successfully preprocessed")
